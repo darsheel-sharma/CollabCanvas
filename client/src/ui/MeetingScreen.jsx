@@ -4,8 +4,8 @@ import { MeetingControls } from "./MeetingControls.jsx";
 
 export function MeetingScreen({ presence }) {
   return (
-    <main className="meeting-shell">
-      <section className="meeting-board">
+    <main className="h-screen overflow-hidden p-0">
+      <section className="relative h-screen w-full">
         <WorkspaceCanvas presence={presence} />
         <Toolbox />
         <MeetingControls presence={presence} />

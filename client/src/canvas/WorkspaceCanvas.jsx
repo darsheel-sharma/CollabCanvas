@@ -1,8 +1,8 @@
 import {
   Background,
   Controls,
-  Panel,
   MiniMap,
+  Panel,
   ReactFlow,
   addEdge,
   applyEdgeChanges,
@@ -27,19 +27,11 @@ export function WorkspaceCanvas({ presence }) {
   const edges = useWorkspaceStore((state) => state.edges);
   const syncNodes = useWorkspaceStore((state) => state.setNodes);
   const syncEdges = useWorkspaceStore((state) => state.setEdges);
-  const setViewportCenter = useWorkspaceStore(
-    (state) => state.setViewportCenter,
-  );
+  const setViewportCenter = useWorkspaceStore((state) => state.setViewportCenter);
   const updateCode = useWorkspaceStore((state) => state.updateCodeContent);
-  const updateWhiteboard = useWorkspaceStore(
-    (state) => state.updateWhiteboardContent,
-  );
+  const updateWhiteboard = useWorkspaceStore((state) => state.updateWhiteboardContent);
   const updateImage = useWorkspaceStore((state) => state.updateImageUrl);
-
-  // FIX APPLIED HERE: Subscribe to the mute flag
-  const isApplyingRemoteState = useWorkspaceStore(
-    (state) => state.isApplyingRemoteState,
-  );
+  const isApplyingRemoteState = useWorkspaceStore((state) => state.isApplyingRemoteState);
 
   const hydratedNodes = useMemo(
     () =>
@@ -48,6 +40,8 @@ export function WorkspaceCanvas({ presence }) {
         data: {
           ...node.data,
           presence,
+          yDoc: presence.doc,
+          awareness: presence.awareness,
           onCodeChange: updateCode,
           onWhiteboardChange: updateWhiteboard,
           onImageChange: updateImage,
@@ -81,12 +75,14 @@ export function WorkspaceCanvas({ presence }) {
   }, [screenToFlowPosition, setViewportCenter]);
 
   return (
-    <div className="workspace-shell">
+    <div className="relative h-full w-full overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.86),rgba(255,255,255,0.54)),rgba(255,255,255,0.36)]">
       <ReactFlow
+        className="h-full w-full"
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         nodes={hydratedNodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        proOptions={{ hideAttribution: true }}
         nodesDraggable
         nodesConnectable
         elementsSelectable
@@ -107,12 +103,10 @@ export function WorkspaceCanvas({ presence }) {
           );
         }}
         onNodesChange={(changes) => {
-          // FIX APPLIED HERE: Mute canvas updates if they came from the network
           if (isApplyingRemoteState) return;
           syncNodes(applyNodeChanges(changes, nodes));
         }}
         onEdgesChange={(changes) => {
-          // FIX APPLIED HERE: Mute canvas updates if they came from the network
           if (isApplyingRemoteState) return;
           syncEdges(applyEdgeChanges(changes, edges));
         }}
@@ -120,11 +114,12 @@ export function WorkspaceCanvas({ presence }) {
       >
         {hydratedNodes.length === 0 ? (
           <Panel position="top-center">
-            <div className="workspace-empty-state">
-              <strong>Start by adding a node</strong>
-              <span>
-                Open the hamburger menu and drop in an image, code, or
-                whiteboard node.
+            <div className="grid min-w-80 gap-1.5 rounded-[18px] border border-slate-900/12 bg-white/92 px-[18px] py-3.5 text-center shadow-[0_18px_42px_rgba(19,32,51,0.12)]">
+              <strong className="text-xl font-semibold text-slate-950 sm:text-2xl">
+                Start by adding a node
+              </strong>
+              <span className="text-[15px] text-slate-500">
+                Open the hamburger menu and drop in an image, code, or whiteboard node.
               </span>
             </div>
           </Panel>
@@ -133,7 +128,7 @@ export function WorkspaceCanvas({ presence }) {
           pannable
           zoomable
           position="top-right"
-          className="workspace-minimap"
+          className="!m-[18px] !overflow-hidden !rounded-[18px] !border !border-slate-900/12 !bg-white/88 !shadow-[0_16px_36px_rgba(19,32,51,0.14)]"
           nodeStrokeColor="#132033"
           nodeColor="rgba(19, 32, 51, 0.18)"
           maskColor="rgba(255, 255, 255, 0.72)"

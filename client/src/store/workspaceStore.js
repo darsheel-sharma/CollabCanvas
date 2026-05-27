@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { AUTH_STORAGE_KEY } from "@live-collab/shared";
 import { login, logout, me, signup } from "../lib/api.js";
 
 const NODE_DEFAULTS = {
@@ -67,15 +66,12 @@ function createNode(type, index, position = { x: 220, y: 80 }) {
   };
 }
 
-function readRoomFromUrl() {
+function buildMeetingShareUrl(roomId) {
   if (typeof window === "undefined") {
-    return null;
+    return "";
   }
 
-  const roomId = new URL(window.location.href).searchParams.get("room");
-  return roomId
-    ? { roomId, joined: false, shareUrl: window.location.href }
-    : null;
+  return `${window.location.origin}/meeting?room=${roomId}`;
 }
 
 function parseRoomId(draft) {
@@ -96,11 +92,12 @@ function parseRoomId(draft) {
 
 export const useWorkspaceStore = create((set, get) => ({
   user: null,
+  isSessionHydrated: false,
   authMode: "login",
   authStatus: "idle",
   authError: "",
-  activeRoom: readRoomFromUrl(),
-  roomDraft: readRoomFromUrl()?.roomId ?? "",
+  activeRoom: null,
+  roomDraft: "",
   roomError: "",
   collabStatus: "idle",
   isMuted: false,
@@ -112,24 +109,20 @@ export const useWorkspaceStore = create((set, get) => ({
   isApplyingRemoteState: false,
   setAuthMode: (authMode) => set({ authMode }),
   hydrateSession: async () => {
-    const token = sessionStorage.getItem(AUTH_STORAGE_KEY);
-    if (!token) {
-      return;
-    }
-
     set({ authStatus: "loading", authError: "" });
 
     try {
       const payload = await me();
       set({
         user: payload.user,
+        isSessionHydrated: true,
         authStatus: "authenticated",
         authError: "",
       });
-    } catch (error) {
-      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    } catch {
       set({
         user: null,
+        isSessionHydrated: true,
         authStatus: "idle",
         authError: "",
       });
@@ -144,17 +137,18 @@ export const useWorkspaceStore = create((set, get) => ({
           ? await signup({ name, email, password })
           : await login({ email, password });
 
-      sessionStorage.setItem(AUTH_STORAGE_KEY, payload.token);
       set({
         user: payload.user,
         authStatus: "authenticated",
         authError: "",
       });
+      return payload.user;
     } catch (error) {
       set({
         authStatus: "idle",
         authError: error.message,
       });
+      return null;
     }
   },
   logout: async () => {
@@ -164,9 +158,9 @@ export const useWorkspaceStore = create((set, get) => ({
       // Keep local logout resilient even if the server is unavailable.
     }
 
-    sessionStorage.removeItem(AUTH_STORAGE_KEY);
     set({
       user: null,
+      isSessionHydrated: true,
       authStatus: "idle",
       authError: "",
       activeRoom: null,
@@ -178,59 +172,66 @@ export const useWorkspaceStore = create((set, get) => ({
       hasAudioPermission: false,
     });
   },
-  syncRoomFromUrl: () => {
-    const room = readRoomFromUrl();
-    if (!room) {
-      return;
-    }
-
+  syncRoomFromRoute: (roomId, joined = false) =>
     set({
-      activeRoom: room,
-      roomDraft: room.roomId,
-    });
-  },
+      activeRoom: roomId
+        ? {
+            roomId,
+            joined,
+            shareUrl: buildMeetingShareUrl(roomId),
+          }
+        : null,
+      roomDraft: roomId ?? "",
+      roomError: "",
+    }),
   setRoomDraft: (roomDraft) => set({ roomDraft, roomError: "" }),
   createRoom: () => {
     const roomId = `meet-${Math.random().toString(36).slice(2, 8)}`;
-    const shareUrl = `${window.location.origin}/?room=${roomId}`;
-    window.history.replaceState({}, "", `/?room=${roomId}`);
 
     set({
-      activeRoom: { roomId, shareUrl, joined: true },
+      activeRoom: {
+        roomId,
+        joined: true,
+        shareUrl: buildMeetingShareUrl(roomId),
+      },
       roomDraft: roomId,
       roomError: "",
       nodes: [],
       edges: [],
     });
+
+    return roomId;
   },
   joinRoom: () => {
     const draft = get().roomDraft.trim();
 
     if (!draft) {
       set({ roomError: "Enter a room code or meeting link first." });
-      return;
+      return null;
     }
 
     const roomId = parseRoomId(draft);
 
     if (!roomId) {
       set({ roomError: "That meeting link does not look valid." });
-      return;
+      return null;
     }
 
-    const shareUrl = `${window.location.origin}/?room=${roomId}`;
-    window.history.replaceState({}, "", `/?room=${roomId}`);
-
     set({
-      activeRoom: { roomId, shareUrl, joined: true },
+      activeRoom: {
+        roomId,
+        joined: true,
+        shareUrl: buildMeetingShareUrl(roomId),
+      },
       roomDraft: roomId,
       roomError: "",
       nodes: [],
       edges: [],
     });
+
+    return roomId;
   },
   leaveRoom: () => {
-    window.history.replaceState({}, "", "/");
     set({
       activeRoom: null,
       roomDraft: "",
@@ -264,7 +265,6 @@ export const useWorkspaceStore = create((set, get) => ({
       edges,
       canvasVersion: state.canvasVersion + 1,
     })),
-
   applyRemoteCanvasState: ({ nodes, edges }) => {
     set({
       nodes: Array.isArray(nodes) ? nodes : [],
@@ -272,12 +272,10 @@ export const useWorkspaceStore = create((set, get) => ({
       isApplyingRemoteState: true,
     });
 
-    // Give React Flow a brief window to reconcile remote controlled-node updates.
     setTimeout(() => {
       set({ isApplyingRemoteState: false });
     }, 150);
   },
-
   clearRemoteApplyFlag: () => set({ isApplyingRemoteState: false }),
   addNode: (type) =>
     set((state) => ({

@@ -1,25 +1,29 @@
-import {
-  PRESENCE_STATUS,
-  WS_MESSAGE_TYPES,
-} from "@live-collab/shared";
+import { COLLAB_WS_PATH, PRESENCE_STATUS, WS_MESSAGE_TYPES } from "@live-collab/shared";
+import { decodeMessage, encodeMessage } from "./wsCodec.js";
+
+function normalizeWsUrl(baseUrl, path) {
+  const url = new URL(baseUrl);
+  url.pathname = path;
+  return url.toString();
+}
 
 export class WebSocketCollabClient {
   constructor({
     roomId,
     url,
-    user,
     onPresence,
     onStatusChange,
     onError,
-    onSnapshot,
+    onRoomJoined,
+    onYDocUpdate,
   }) {
     this.roomId = roomId;
-    this.url = url;
-    this.user = user;
+    this.url = normalizeWsUrl(url, COLLAB_WS_PATH);
     this.onPresence = onPresence;
     this.onStatusChange = onStatusChange;
     this.onError = onError;
-    this.onSnapshot = onSnapshot;
+    this.onRoomJoined = onRoomJoined;
+    this.onYDocUpdate = onYDocUpdate;
     this.socket = null;
     this.clientId = globalThis.crypto?.randomUUID?.() ?? `client-${Date.now()}`;
   }
@@ -27,14 +31,13 @@ export class WebSocketCollabClient {
   connect() {
     this.onStatusChange?.(PRESENCE_STATUS.CONNECTING);
     this.socket = new WebSocket(this.url);
+    this.socket.binaryType = "arraybuffer";
 
     this.socket.addEventListener("open", () => {
       this.onStatusChange?.(PRESENCE_STATUS.CONNECTED);
       this.send(WS_MESSAGE_TYPES.ROOM_JOIN, {
         roomId: this.roomId,
         peerId: this.clientId,
-        displayName: this.user?.name ?? "Guest",
-        email: this.user?.email ?? "",
       });
     });
 
@@ -42,8 +45,8 @@ export class WebSocketCollabClient {
       this.onStatusChange?.(PRESENCE_STATUS.DISCONNECTED);
     });
 
-    this.socket.addEventListener("message", (event) => {
-      const message = JSON.parse(event.data);
+    this.socket.addEventListener("message", async (event) => {
+      const message = await decodeMessage(event.data);
 
       if (message.type === WS_MESSAGE_TYPES.ROOM_PRESENCE) {
         this.onPresence?.(message.payload.participants ?? []);
@@ -51,12 +54,12 @@ export class WebSocketCollabClient {
       }
 
       if (message.type === WS_MESSAGE_TYPES.ROOM_JOINED) {
-        this.onSnapshot?.(message.payload.snapshot ?? { nodes: [], edges: [] });
+        this.onRoomJoined?.(message.payload);
         return;
       }
 
-      if (message.type === WS_MESSAGE_TYPES.COLLAB_UPDATE) {
-        this.onSnapshot?.(message.payload.update ?? { nodes: [], edges: [] });
+      if (message.type === WS_MESSAGE_TYPES.YDOC_UPDATE) {
+        this.onYDocUpdate?.(message.payload.update ?? new Uint8Array());
         return;
       }
 
@@ -71,7 +74,7 @@ export class WebSocketCollabClient {
       return;
     }
 
-    this.socket.send(JSON.stringify({ type, payload }));
+    this.socket.send(encodeMessage({ type, payload }));
   }
 
   disconnect() {
@@ -85,7 +88,7 @@ export class WebSocketCollabClient {
     this.socket?.close();
   }
 
-  sendSnapshot(update) {
-    this.send(WS_MESSAGE_TYPES.COLLAB_UPDATE, { update });
+  sendYDocUpdate(update) {
+    this.send(WS_MESSAGE_TYPES.YDOC_UPDATE, { update });
   }
 }

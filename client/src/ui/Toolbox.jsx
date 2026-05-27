@@ -12,34 +12,34 @@ export function Toolbox() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <aside className={`toolbox-overlay ${isOpen ? "open" : ""}`}>
+    <aside className="absolute left-4 top-4 z-30 sm:left-6 sm:top-6">
       <button
-        className="toolbox-toggle"
+        className="grid h-[62px] w-[62px] content-center gap-1.5 rounded-[18px] border-none bg-slate-950/95 px-4 shadow-[0_18px_36px_rgba(19,32,51,0.28)] transition hover:-translate-y-0.5 hover:shadow-[0_22px_42px_rgba(19,32,51,0.32)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
         type="button"
         aria-label="Toggle node menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((current) => !current)}
       >
-        <span />
-        <span />
-        <span />
+        <span className="block h-[3px] rounded-full bg-white" />
+        <span className="block h-[3px] rounded-full bg-white" />
+        <span className="block h-[3px] rounded-full bg-white" />
       </button>
       {isOpen ? (
-        <div className="toolbox-panel">
-          <p className="toolbox-title">Add nodes</p>
-          <div className="toolbox-list">
+        <div className="mt-3 w-[248px] rounded-3xl border border-slate-900/15 bg-white/95 p-4 shadow-[0_22px_48px_rgba(19,32,51,0.18)] backdrop-blur-xl">
+          <p className="mb-3 text-sm font-bold text-slate-900">Add nodes</p>
+          <div className="grid gap-3.5">
             {tools.map((tool) => (
               <button
                 key={tool.type}
-                className="toolbox-button"
+                className="grid gap-1 rounded-2xl border border-slate-900/15 bg-white px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
                 type="button"
                 onClick={() => {
                   addNode(tool.type);
                   setIsOpen(false);
                 }}
               >
-                <strong>{tool.label}</strong>
-                <span>{tool.hint}</span>
+                <strong className="text-sm font-semibold text-slate-900">{tool.label}</strong>
+                <span className="text-xs text-slate-500">{tool.hint}</span>
               </button>
             ))}
           </div>

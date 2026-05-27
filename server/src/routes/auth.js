@@ -1,13 +1,9 @@
-import { clearSession, getUserFromToken, loginUser, signupUser } from "../lib/auth.js";
-
-function getBearerToken(request) {
-  const header = request.headers.authorization ?? "";
-  if (!header.startsWith("Bearer ")) {
-    return null;
-  }
-
-  return header.slice("Bearer ".length);
-}
+import {
+  clearSessionCookie,
+  createSessionCookie,
+  loginUser,
+  signupUser,
+} from "../lib/auth.js";
 
 export function registerAuthRoutes(app) {
   app.post("/api/auth/signup", async (request, response) => {
@@ -34,7 +30,8 @@ export function registerAuthRoutes(app) {
         password,
       });
 
-      response.status(201).json(result);
+      response.setHeader("Set-Cookie", createSessionCookie(result.token));
+      response.status(201).json({ user: result.user });
     } catch (error) {
       response.status(400).json({ error: error.message });
     }
@@ -52,26 +49,24 @@ export function registerAuthRoutes(app) {
       }
 
       const result = await loginUser({ email, password });
-      response.json(result);
+      response.setHeader("Set-Cookie", createSessionCookie(result.token));
+      response.json({ user: result.user });
     } catch (error) {
       response.status(401).json({ error: error.message });
     }
   });
 
-  app.get("/api/auth/me", async (request, response) => {
-    const token = getBearerToken(request);
-    const user = await getUserFromToken(token);
-
-    if (!user) {
+  app.get("/api/auth/me", (request, response) => {
+    if (!request.authUser) {
       response.status(401).json({ error: "Session expired or invalid." });
       return;
     }
 
-    response.json({ user });
+    response.json({ user: request.authUser });
   });
 
-  app.post("/api/auth/logout", (request, response) => {
-    clearSession(getBearerToken(request));
+  app.post("/api/auth/logout", (_request, response) => {
+    response.setHeader("Set-Cookie", clearSessionCookie());
     response.status(204).end();
   });
 }
