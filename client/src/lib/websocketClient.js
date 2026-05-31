@@ -32,7 +32,20 @@ export class WebSocketCollabClient {
 
   connect() {
     this.onStatusChange?.(PRESENCE_STATUS.CONNECTING);
-    this.socket = new WebSocket(this.url);
+    
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    let wsUrl = this.url;
+    if (token) {
+      try {
+        const urlObj = new URL(wsUrl);
+        urlObj.searchParams.set("token", token);
+        wsUrl = urlObj.toString();
+      } catch (err) {
+        console.error("Failed to append token to websocket URL:", err);
+      }
+    }
+
+    this.socket = new WebSocket(wsUrl);
     this.socket.binaryType = "arraybuffer";
 
     this.socket.addEventListener("open", () => {

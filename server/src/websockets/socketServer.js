@@ -4,7 +4,7 @@ import {
   COLLAB_WS_PATH,
   WS_MESSAGE_TYPES,
 } from "@live-collab/shared";
-import { getUserFromRequest } from "../lib/auth.js";
+import { getUserFromRequest, getUserFromToken } from "../lib/auth.js";
 import { decodeMessage, encodeMessage } from "../lib/wsCodec.js";
 
 function rejectUpgrade(socket) {
@@ -201,7 +201,17 @@ export function createWebSocketServer({ httpServer, roomHub, redisPubSub }) {
   httpServer.on("upgrade", async (request, socket, head) => {
     try {
       const requestUrl = new URL(request.url, "http://localhost");
-      const user = await getUserFromRequest(request);
+      
+      const token = requestUrl.searchParams.get("token");
+      let user = null;
+      
+      if (token) {
+        user = await getUserFromToken(token);
+      }
+      
+      if (!user) {
+        user = await getUserFromRequest(request);
+      }
 
       if (!user) {
         rejectUpgrade(socket);
@@ -209,6 +219,7 @@ export function createWebSocketServer({ httpServer, roomHub, redisPubSub }) {
       }
 
       request.authUser = user;
+      request.user = user;
 
       if (requestUrl.pathname === COLLAB_WS_PATH) {
         collabServer.handleUpgrade(request, socket, head, (ws) => {
