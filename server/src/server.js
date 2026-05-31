@@ -16,7 +16,7 @@ const app = express();
 app.use((request, response, next) => {
   response.header("Access-Control-Allow-Origin", clientOrigin);
   response.header("Access-Control-Allow-Credentials", "true");
-  response.header("Access-Control-Allow-Headers", "Content-Type");
+  response.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   response.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 
   if (request.method === "OPTIONS") {

@@ -1,13 +1,20 @@
 const apiBaseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 async function request(path, options = {}) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const headers = {
+    "Content-Type": "application/json",
+    ...(options.headers ?? {}),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${apiBaseUrl}${path}`, {
     credentials: "include",
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers ?? {}),
-    },
+    headers,
   });
 
   if (response.status === 204) {

@@ -89,7 +89,10 @@ export async function getUserFromToken(token) {
 }
 
 export async function getUserFromRequest(request) {
-  const token = getTokenFromCookies(request.headers.cookie ?? "");
+  let token = getTokenFromCookies(request.headers.cookie ?? "");
+  if (!token && request.headers.authorization?.startsWith("Bearer ")) {
+    token = request.headers.authorization.substring(7);
+  }
   return getUserFromToken(token);
 }
 

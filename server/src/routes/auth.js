@@ -31,7 +31,7 @@ export function registerAuthRoutes(app) {
       });
 
       response.setHeader("Set-Cookie", createSessionCookie(result.token));
-      response.status(201).json({ user: result.user });
+      response.status(201).json({ user: result.user, token: result.token });
     } catch (error) {
       response.status(400).json({ error: error.message });
     }
@@ -50,7 +50,7 @@ export function registerAuthRoutes(app) {
 
       const result = await loginUser({ email, password });
       response.setHeader("Set-Cookie", createSessionCookie(result.token));
-      response.json({ user: result.user });
+      response.json({ user: result.user, token: result.token });
     } catch (error) {
       response.status(401).json({ error: error.message });
     }

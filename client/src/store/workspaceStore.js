@@ -141,6 +141,10 @@ export const useWorkspaceStore = create((set, get) => ({
           ? await signup({ name, email, password })
           : await login({ email, password });
 
+      if (payload.token) {
+        localStorage.setItem("token", payload.token);
+      }
+
       set({
         user: payload.user,
         authStatus: "authenticated",
@@ -161,6 +165,8 @@ export const useWorkspaceStore = create((set, get) => ({
     } catch {
       // Keep local logout resilient even if the server is unavailable.
     }
+
+    localStorage.removeItem("token");
 
     const { localStream } = get();
     if (localStream) {

@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import { requireAuth } from "../lib/authMiddleware.js";
 
 function createSlug() {
   return `ws-${Math.random().toString(36).slice(2, 8)}`;
@@ -6,9 +7,12 @@ function createSlug() {
 
 export function registerWorkspaceRoutes(app) {
   // Get all active workspaces for the current user
-  app.get("/api/workspaces", async (request, response) => {
+  app.get("/api/workspaces", requireAuth, async (request, response) => {
     try {
-      const userId = request.authUser.id;
+      const userId = request.authUser?.id || request.user?.id;
+      if (!userId) {
+        return response.status(401).json({ error: "Authentication required." });
+      }
       const workspaces = await prisma.workspace.findMany({
         where: {
           ownerId: userId,
@@ -26,10 +30,14 @@ export function registerWorkspaceRoutes(app) {
   });
 
   // Create a new workspace
-  app.post("/api/workspaces", async (request, response) => {
+  app.post("/api/workspaces", requireAuth, async (request, response) => {
     try {
       const { name, hasTimeLimit, durationMinutes } = request.body ?? {};
-      const userId = request.authUser.id;
+      const userId = request.authUser?.id || request.user?.id;
+
+      if (!userId) {
+        return response.status(401).json({ error: "Authentication required." });
+      }
 
       if (!name?.trim()) {
         return response.status(400).json({ error: "Workspace name is required." });
@@ -86,10 +94,14 @@ export function registerWorkspaceRoutes(app) {
   });
 
   // Delete a workspace
-  app.delete("/api/workspaces/:id", async (request, response) => {
+  app.delete("/api/workspaces/:id", requireAuth, async (request, response) => {
     try {
       const { id } = request.params;
-      const userId = request.authUser.id;
+      const userId = request.authUser?.id || request.user?.id;
+
+      if (!userId) {
+        return response.status(401).json({ error: "Authentication required." });
+      }
 
       // Find first to verify ownership
       const workspace = await prisma.workspace.findFirst({
