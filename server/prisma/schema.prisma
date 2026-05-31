@@ -26,6 +26,7 @@ model Workspace {
   documentState DocumentState?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+  expiresAt     DateTime?
 }
 
 model DocumentState {

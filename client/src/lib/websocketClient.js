@@ -16,6 +16,7 @@ export class WebSocketCollabClient {
     onError,
     onRoomJoined,
     onYDocUpdate,
+    onWebRTCSignal,
   }) {
     this.roomId = roomId;
     this.url = normalizeWsUrl(url, COLLAB_WS_PATH);
@@ -24,6 +25,7 @@ export class WebSocketCollabClient {
     this.onError = onError;
     this.onRoomJoined = onRoomJoined;
     this.onYDocUpdate = onYDocUpdate;
+    this.onWebRTCSignal = onWebRTCSignal;
     this.socket = null;
     this.clientId = globalThis.crypto?.randomUUID?.() ?? `client-${Date.now()}`;
   }
@@ -63,6 +65,11 @@ export class WebSocketCollabClient {
         return;
       }
 
+      if (message.type === WS_MESSAGE_TYPES.WEBRTC_SIGNAL) {
+        this.onWebRTCSignal?.(message.payload);
+        return;
+      }
+
       if (message.type === WS_MESSAGE_TYPES.ERROR) {
         this.onError?.(message.payload.message ?? "Connection error");
       }
@@ -90,5 +97,12 @@ export class WebSocketCollabClient {
 
   sendYDocUpdate(update) {
     this.send(WS_MESSAGE_TYPES.YDOC_UPDATE, { update });
+  }
+
+  sendWebRTCSignal(targetPeerId, signal) {
+    this.send(WS_MESSAGE_TYPES.WEBRTC_SIGNAL, {
+      targetPeerId,
+      signal,
+    });
   }
 }

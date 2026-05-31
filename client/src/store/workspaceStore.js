@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { login, logout, me, signup } from "../lib/api.js";
+import { login, logout, me, signup, getWorkspaces, createWorkspace as apiCreateWorkspace, getWorkspace as apiGetWorkspace, deleteWorkspace as apiDeleteWorkspace } from "../lib/api.js";
 
 const NODE_DEFAULTS = {
   codeNode: {
@@ -35,7 +35,7 @@ function createNode(type, index, position = { x: 220, y: 80 }) {
         docKey: `${id}:doc`,
         code: NODE_DEFAULTS.codeNode.code,
       },
-      style: { width: NODE_DEFAULTS.codeNode.width },
+      style: { width: 400, height: 320 },
     };
   }
 
@@ -49,7 +49,7 @@ function createNode(type, index, position = { x: 220, y: 80 }) {
         whiteboardKey: `${id}:board`,
         content: NODE_DEFAULTS.whiteboardNode.content,
       },
-      style: { width: NODE_DEFAULTS.whiteboardNode.width },
+      style: { width: 320, height: 260 },
     };
   }
 
@@ -62,7 +62,7 @@ function createNode(type, index, position = { x: 220, y: 80 }) {
       imageKey: `${id}:image`,
       imageUrl: NODE_DEFAULTS.imageNode.imageUrl,
     },
-    style: { width: NODE_DEFAULTS.imageNode.width },
+    style: { width: 300, height: 250 },
   };
 }
 
@@ -102,12 +102,16 @@ export const useWorkspaceStore = create((set, get) => ({
   collabStatus: "idle",
   isMuted: false,
   hasAudioPermission: false,
+  localStream: null,
   viewportCenter: { x: 220, y: 80 },
   nodes: [],
   edges: [],
   canvasVersion: 0,
   isApplyingRemoteState: false,
+  workspaces: [],
+  isLoadingWorkspaces: false,
   setAuthMode: (authMode) => set({ authMode }),
+  setLocalStream: (localStream) => set({ localStream }),
   hydrateSession: async () => {
     set({ authStatus: "loading", authError: "" });
 
@@ -158,6 +162,11 @@ export const useWorkspaceStore = create((set, get) => ({
       // Keep local logout resilient even if the server is unavailable.
     }
 
+    const { localStream } = get();
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+    }
+
     set({
       user: null,
       isSessionHydrated: true,
@@ -170,6 +179,7 @@ export const useWorkspaceStore = create((set, get) => ({
       edges: [],
       isMuted: false,
       hasAudioPermission: false,
+      localStream: null,
     });
   },
   syncRoomFromRoute: (roomId, joined = false) =>
@@ -232,6 +242,11 @@ export const useWorkspaceStore = create((set, get) => ({
     return roomId;
   },
   leaveRoom: () => {
+    const { localStream } = get();
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+    }
+
     set({
       activeRoom: null,
       roomDraft: "",
@@ -241,6 +256,7 @@ export const useWorkspaceStore = create((set, get) => ({
       collabStatus: "idle",
       isMuted: false,
       hasAudioPermission: false,
+      localStream: null,
     });
   },
   setRoomError: (roomError) => set({ roomError }),
@@ -254,7 +270,16 @@ export const useWorkspaceStore = create((set, get) => ({
   setCollabStatus: (collabStatus) => set({ collabStatus }),
   setAudioPermission: (hasAudioPermission) => set({ hasAudioPermission }),
   setViewportCenter: (viewportCenter) => set({ viewportCenter }),
-  toggleMute: () => set((state) => ({ isMuted: !state.isMuted })),
+  toggleMute: () =>
+    set((state) => {
+      const nextMuted = !state.isMuted;
+      if (state.localStream) {
+        state.localStream.getAudioTracks().forEach((track) => {
+          track.enabled = !nextMuted;
+        });
+      }
+      return { isMuted: nextMuted };
+    }),
   setNodes: (nodes) =>
     set((state) => ({
       nodes,
@@ -285,6 +310,26 @@ export const useWorkspaceStore = create((set, get) => ({
       ],
       canvasVersion: state.canvasVersion + 1,
     })),
+  addNodeAtPosition: (type, position) =>
+    set((state) => ({
+      nodes: [
+        ...state.nodes,
+        createNode(
+          type,
+          state.nodes.length + 1,
+          position || state.viewportCenter,
+        ),
+      ],
+      canvasVersion: state.canvasVersion + 1,
+    })),
+  deleteNode: (nodeId) =>
+    set((state) => ({
+      nodes: state.nodes.filter((node) => node.id !== nodeId),
+      edges: state.edges.filter(
+        (edge) => edge.source !== nodeId && edge.target !== nodeId,
+      ),
+      canvasVersion: state.canvasVersion + 1,
+    })),
   updateCodeContent: (code, docKey) =>
     set((state) => ({
       nodes: state.nodes.map((node) =>
@@ -312,4 +357,81 @@ export const useWorkspaceStore = create((set, get) => ({
       ),
       canvasVersion: state.canvasVersion + 1,
     })),
+  updateNodeDimensions: (nodeId, width, height) =>
+    set((state) => {
+      const node = state.nodes.find((n) => n.id === nodeId);
+      if (!node || (node.style?.width === width && node.style?.height === height)) {
+        return {};
+      }
+      return {
+        nodes: state.nodes.map((n) =>
+          n.id === nodeId
+            ? { ...n, style: { ...n.style, width, height } }
+            : n,
+        ),
+        canvasVersion: state.canvasVersion + 1,
+      };
+    }),
+  fetchWorkspaces: async () => {
+    set({ isLoadingWorkspaces: true });
+    try {
+      const data = await getWorkspaces();
+      set({ workspaces: data.workspaces ?? [], isLoadingWorkspaces: false });
+    } catch (error) {
+      set({ isLoadingWorkspaces: false, roomError: error.message });
+    }
+  },
+  createWorkspace: async ({ name, hasTimeLimit, durationMinutes }) => {
+    set({ isLoadingWorkspaces: true });
+    try {
+      const data = await apiCreateWorkspace({ name, hasTimeLimit, durationMinutes });
+      const ws = data.workspace;
+      set((state) => ({
+        workspaces: [ws, ...state.workspaces],
+        activeRoom: {
+          roomId: ws.slug,
+          joined: true,
+          shareUrl: buildMeetingShareUrl(ws.slug),
+          expiresAt: ws.expiresAt,
+          name: ws.name,
+        },
+        isLoadingWorkspaces: false,
+        roomError: "",
+      }));
+      return ws;
+    } catch (error) {
+      set({ isLoadingWorkspaces: false, roomError: error.message });
+      throw error;
+    }
+  },
+  deleteWorkspace: async (id) => {
+    try {
+      await apiDeleteWorkspace(id);
+      set((state) => ({
+        workspaces: state.workspaces.filter((w) => w.id !== id),
+      }));
+    } catch (error) {
+      set({ roomError: error.message });
+    }
+  },
+  verifyAndJoinWorkspace: async (slug) => {
+    try {
+      const data = await apiGetWorkspace(slug);
+      const ws = data.workspace;
+      set({
+        activeRoom: {
+          roomId: ws.slug,
+          joined: true,
+          shareUrl: buildMeetingShareUrl(ws.slug),
+          expiresAt: ws.expiresAt,
+          name: ws.name,
+        },
+        roomError: "",
+      });
+      return ws;
+    } catch (error) {
+      set({ roomError: error.message });
+      throw error;
+    }
+  },
 }));

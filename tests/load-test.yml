@@ -1,0 +1,21 @@
+config:
+  target: "ws://localhost:4000/ws/collab"
+  processor: "./artillery-processor.js"
+  phases:
+    - duration: 30
+      arrivalRate: 2
+      rampTo: 5
+      name: "Warm-up Phase (Ramping connection load)"
+    - duration: 60
+      arrivalRate: 5
+      name: "Sustained Collaborative Peer Load"
+scenarios:
+  - name: "Active Collaborative Workspace User"
+    engine: ws
+    flow:
+      # Generate high-performance binary MessagePack payloads dynamically
+      - function: "generateJoinMessage"
+      # Send the room join packet
+      - send: "{{ joinPayload }}"
+      # Maintain active connection to simulate collaborative drawing/editing
+      - think: 10

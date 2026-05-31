@@ -45,8 +45,25 @@ export async function logout() {
   return request("/api/auth/logout", { method: "POST" });
 }
 
-export async function fetchSfuConfig() {
-  return request("/api/sfu/config");
+export async function getWorkspaces() {
+  return request("/api/workspaces");
+}
+
+export async function createWorkspace(payload) {
+  return request("/api/workspaces", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getWorkspace(slug) {
+  return request(`/api/workspaces/${slug}`);
+}
+
+export async function deleteWorkspace(id) {
+  return request(`/api/workspaces/${id}`, {
+    method: "DELETE",
+  });
 }
 
 export { apiBaseUrl };

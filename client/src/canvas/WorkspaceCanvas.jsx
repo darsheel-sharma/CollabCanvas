@@ -9,7 +9,8 @@ import {
   applyNodeChanges,
   useReactFlow,
 } from "reactflow";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useCallback, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { CodeNode } from "../components/nodes/CodeNode.jsx";
 import { WhiteboardNode } from "../components/nodes/WhiteboardNode.jsx";
 import { ImageNode } from "../components/nodes/ImageNode.jsx";
@@ -23,15 +24,48 @@ const nodeTypes = {
 
 export function WorkspaceCanvas({ presence }) {
   const { screenToFlowPosition } = useReactFlow();
+  const navigate = useNavigate();
   const nodes = useWorkspaceStore((state) => state.nodes);
   const edges = useWorkspaceStore((state) => state.edges);
+  const activeRoom = useWorkspaceStore((state) => state.activeRoom);
   const syncNodes = useWorkspaceStore((state) => state.setNodes);
   const syncEdges = useWorkspaceStore((state) => state.setEdges);
-  const setViewportCenter = useWorkspaceStore((state) => state.setViewportCenter);
+  const setViewportCenter = useWorkspaceStore(
+    (state) => state.setViewportCenter,
+  );
   const updateCode = useWorkspaceStore((state) => state.updateCodeContent);
-  const updateWhiteboard = useWorkspaceStore((state) => state.updateWhiteboardContent);
+  const updateWhiteboard = useWorkspaceStore(
+    (state) => state.updateWhiteboardContent,
+  );
   const updateImage = useWorkspaceStore((state) => state.updateImageUrl);
-  const isApplyingRemoteState = useWorkspaceStore((state) => state.isApplyingRemoteState);
+  const isApplyingRemoteState = useWorkspaceStore(
+    (state) => state.isApplyingRemoteState,
+  );
+  const addNodeAtPosition = useWorkspaceStore(
+    (state) => state.addNodeAtPosition,
+  );
+  const leaveRoom = useWorkspaceStore((state) => state.leaveRoom);
+
+  useEffect(() => {
+    if (!activeRoom?.expiresAt) {
+      return;
+    }
+
+    const checkExpiration = () => {
+      const diff = new Date(activeRoom.expiresAt) - new Date();
+      if (diff <= 0) {
+        clearInterval(interval);
+        window.alert("This workspace has expired. Returning to dashboard.");
+        leaveRoom();
+        navigate("/meeting", { replace: true });
+      }
+    };
+
+    checkExpiration();
+    const interval = setInterval(checkExpiration, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeRoom?.expiresAt, navigate, leaveRoom]);
 
   const hydratedNodes = useMemo(
     () =>
@@ -74,6 +108,102 @@ export function WorkspaceCanvas({ presence }) {
     };
   }, [screenToFlowPosition, setViewportCenter]);
 
+  useEffect(() => {
+    const handlePaste = async (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let item of items) {
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+
+          const file = item.getAsFile();
+          if (!file) return;
+
+          // Convert to base64
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const base64Url = event.target.result;
+
+            // Get current mouse position to place node
+            const rect = document
+              .querySelector('[style*="transform"]')
+              ?.parentElement?.getBoundingClientRect();
+            const x = rect?.width / 2 || 250;
+            const y = rect?.height / 2 || 250;
+
+            // Create new image node
+            const newNodeId = `imageNode_${Date.now()}`;
+            const newNode = {
+              id: newNodeId,
+              type: "imageNode",
+              position: { x, y },
+              data: {
+                label: "Image",
+                imageUrl: base64Url,
+                imageKey: newNodeId,
+              },
+            };
+
+            syncNodes([...nodes, newNode]);
+          };
+          reader.readAsDataURL(file);
+          break;
+        }
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [nodes, syncNodes]);
+
+  // Drag and drop for node creation
+  const handleDragOver = useCallback((e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const handleDrop = useCallback(
+    (e) => {
+      e.preventDefault();
+
+      const nodeType = e.dataTransfer.getData("nodeType");
+      if (
+        !nodeType ||
+        !["imageNode", "codeNode", "whiteboardNode"].includes(nodeType)
+      ) {
+        return;
+      }
+
+      const reactFlowBounds = document
+        .querySelector(".react-flow")
+        ?.getBoundingClientRect();
+
+      if (!reactFlowBounds) return;
+
+      const dropPosition = screenToFlowPosition({
+        x: e.clientX - reactFlowBounds.left,
+        y: e.clientY - reactFlowBounds.top,
+      });
+
+      addNodeAtPosition(nodeType, dropPosition);
+    },
+    [screenToFlowPosition, addNodeAtPosition],
+  );
+
+  useEffect(() => {
+    const canvas = document.querySelector(".react-flow");
+    if (!canvas) return;
+
+    canvas.addEventListener("dragover", handleDragOver);
+    canvas.addEventListener("drop", handleDrop);
+
+    return () => {
+      canvas.removeEventListener("dragover", handleDragOver);
+      canvas.removeEventListener("drop", handleDrop);
+    };
+  }, [handleDragOver, handleDrop]);
+
   return (
     <div className="relative h-full w-full overflow-hidden bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.86),rgba(255,255,255,0.54)),rgba(255,255,255,0.36)]">
       <ReactFlow
@@ -86,8 +216,11 @@ export function WorkspaceCanvas({ presence }) {
         nodesDraggable
         nodesConnectable
         elementsSelectable
+        nodesFocusable
+        edgesFocusable
         panOnDrag
         selectionOnDrag
+        onlyRenderVisibleElements={true}
         onMoveEnd={() => {
           const pane = document.querySelector(".react-flow__pane");
           if (!pane) {
@@ -119,7 +252,8 @@ export function WorkspaceCanvas({ presence }) {
                 Start by adding a node
               </strong>
               <span className="text-[15px] text-slate-500">
-                Open the hamburger menu and drop in an image, code, or whiteboard node.
+                Open the hamburger menu and drop in an image, code, or
+                whiteboard node.
               </span>
             </div>
           </Panel>

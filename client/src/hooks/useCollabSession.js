@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { DEFAULT_WORKSPACE_ID, PRESENCE_STATUS } from "@live-collab/shared";
 import { WebSocketCollabClient } from "../lib/websocketClient.js";
 import { useWorkspaceStore } from "../store/workspaceStore.js";
+import { WebRTCMeshManager } from "../lib/webrtcManager.js";
 
 const wsUrl = import.meta.env.VITE_WS_URL ?? "ws://localhost:4000";
 
@@ -70,11 +71,19 @@ export function useCollabSession({ enabled, workspaceId = DEFAULT_WORKSPACE_ID, 
       lastCanvasVersionRef.current = useWorkspaceStore.getState().canvasVersion;
     };
 
+    const webrtcManager = new WebRTCMeshManager({
+      localPeerId: null, // will be updated when client.clientId is set
+      sendSignal: (remotePeerId, signal) => {
+        client.sendWebRTCSignal(remotePeerId, signal);
+      },
+    });
+
     const client = new WebSocketCollabClient({
       roomId: workspaceId,
       url: wsUrl,
       onPresence: (participants) => {
         setSessionState((current) => ({ ...current, participants }));
+        webrtcManager.updateParticipants(participants);
       },
       onStatusChange: (status) => {
         setCollabStatus(status);
@@ -92,12 +101,20 @@ export function useCollabSession({ enabled, workspaceId = DEFAULT_WORKSPACE_ID, 
           ...current,
           participants: payload.participants ?? current.participants,
         }));
+        webrtcManager.updateParticipants(payload.participants ?? []);
         syncCanvasFromDoc();
       },
       onYDocUpdate: (update) => {
         Y.applyUpdate(doc, update, "remote");
       },
+      onWebRTCSignal: ({ senderPeerId, signal }) => {
+        webrtcManager.handleSignal(senderPeerId, signal);
+      },
     });
+
+    webrtcManager.localPeerId = client.clientId;
+    // Set initial stream if already granted
+    webrtcManager.setStream(useWorkspaceStore.getState().localStream);
 
     const handleDocUpdate = (update, origin) => {
       if (origin === "remote") {
@@ -136,6 +153,8 @@ export function useCollabSession({ enabled, workspaceId = DEFAULT_WORKSPACE_ID, 
     lastCanvasVersionRef.current = useWorkspaceStore.getState().canvasVersion;
 
     const unsubscribe = useWorkspaceStore.subscribe((state) => {
+      webrtcManager.setStream(state.localStream);
+
       if (state.isApplyingRemoteState || state.canvasVersion === lastCanvasVersionRef.current) {
         return;
       }
@@ -157,6 +176,7 @@ export function useCollabSession({ enabled, workspaceId = DEFAULT_WORKSPACE_ID, 
 
     return () => {
       unsubscribe();
+      webrtcManager.destroyAll();
       nodesMap.unobserveDeep(handleNodesChange);
       edgesMap.unobserveDeep(handleEdgesChange);
       doc.off("update", handleDocUpdate);

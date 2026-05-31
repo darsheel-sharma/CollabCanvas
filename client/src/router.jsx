@@ -5,7 +5,7 @@ import App from "./App.jsx";
 import { useCollabSession } from "./hooks/useCollabSession.js";
 import { useWorkspaceStore } from "./store/workspaceStore.js";
 import { AuthScreen } from "./ui/AuthScreen.jsx";
-import { LobbyScreen } from "./ui/LobbyScreen.jsx";
+import { DashboardScreen } from "./ui/DashboardScreen.jsx";
 import { MeetingScreen } from "./ui/MeetingScreen.jsx";
 
 function buildAuthRedirectTarget(location) {
@@ -44,7 +44,7 @@ function MeetingPage() {
     syncRoomFromRoute(roomId, false);
   }, [roomId, syncRoomFromRoute]);
 
-  return <LobbyScreen />;
+  return <DashboardScreen />;
 }
 
 function WorkspacePage() {
@@ -52,9 +52,9 @@ function WorkspacePage() {
   const navigate = useNavigate();
   const user = useWorkspaceStore((state) => state.user);
   const activeRoom = useWorkspaceStore((state) => state.activeRoom);
-  const syncRoomFromRoute = useWorkspaceStore((state) => state.syncRoomFromRoute);
+  const verifyAndJoinWorkspace = useWorkspaceStore((state) => state.verifyAndJoinWorkspace);
   const presence = useCollabSession({
-    enabled: Boolean(user && roomId),
+    enabled: Boolean(user && roomId && activeRoom?.joined),
     workspaceId: roomId,
     user,
   });
@@ -65,8 +65,10 @@ function WorkspacePage() {
       return;
     }
 
-    syncRoomFromRoute(roomId, true);
-  }, [navigate, roomId, syncRoomFromRoute]);
+    verifyAndJoinWorkspace(roomId).catch((err) => {
+      navigate(`/meeting?room=${roomId}`, { replace: true });
+    });
+  }, [navigate, roomId, verifyAndJoinWorkspace]);
 
   useEffect(() => {
     if (roomId && activeRoom && !activeRoom.joined) {
@@ -74,7 +76,7 @@ function WorkspacePage() {
     }
   }, [activeRoom, navigate, roomId]);
 
-  if (!roomId) {
+  if (!roomId || !activeRoom?.joined) {
     return null;
   }
 

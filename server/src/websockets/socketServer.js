@@ -2,7 +2,6 @@ import { URL } from "node:url";
 import { WebSocketServer } from "ws";
 import {
   COLLAB_WS_PATH,
-  SIGNAL_WS_PATH,
   WS_MESSAGE_TYPES,
 } from "@live-collab/shared";
 import { getUserFromRequest } from "../lib/auth.js";
@@ -24,7 +23,6 @@ function sendError(socket, message) {
 
 export function createWebSocketServer({ httpServer, roomHub, redisPubSub }) {
   const collabServer = new WebSocketServer({ noServer: true });
-  const signalServer = new WebSocketServer({ noServer: true });
 
   collabServer.on("connection", (socket, request) => {
     const user = request.authUser;
@@ -126,6 +124,34 @@ export function createWebSocketServer({ httpServer, roomHub, redisPubSub }) {
           return;
         }
 
+        if (type === WS_MESSAGE_TYPES.WEBRTC_SIGNAL) {
+          const { targetPeerId, signal } = payload;
+          if (targetPeerId) {
+            const outMessage = encodeMessage({
+              type: WS_MESSAGE_TYPES.WEBRTC_SIGNAL,
+              payload: {
+                roomId: activeRoomId,
+                targetPeerId,
+                signal,
+                senderPeerId: activePeerId,
+              },
+            });
+
+            roomHub.sendToPeer(activeRoomId, targetPeerId, outMessage);
+
+            await redisPubSub.publish({
+              roomId: activeRoomId,
+              type: "webrtc:signal",
+              payload: {
+                targetPeerId,
+                signal,
+                senderPeerId: activePeerId,
+              },
+            });
+          }
+          return;
+        }
+
         if (type === WS_MESSAGE_TYPES.ROOM_LEAVE) {
           roomHub.leaveRoom(activeRoomId, activePeerId);
 
@@ -172,30 +198,6 @@ export function createWebSocketServer({ httpServer, roomHub, redisPubSub }) {
     });
   });
 
-  signalServer.on("connection", (socket, request) => {
-    socket.send(
-      encodeMessage({
-        type: WS_MESSAGE_TYPES.SFU_CONFIG,
-        payload: {
-          user: request.authUser,
-          provider: process.env.SFU_PROVIDER ?? "disabled",
-          url: process.env.SFU_URL ?? "",
-        },
-      }),
-    );
-
-    socket.on("message", (rawData) => {
-      try {
-        const message = decodeMessage(rawData);
-        if (message.type !== WS_MESSAGE_TYPES.SFU_SIGNAL) {
-          sendError(socket, "Unsupported signaling message.");
-        }
-      } catch (error) {
-        sendError(socket, error.message);
-      }
-    });
-  });
-
   httpServer.on("upgrade", async (request, socket, head) => {
     try {
       const requestUrl = new URL(request.url, "http://localhost");
@@ -215,13 +217,6 @@ export function createWebSocketServer({ httpServer, roomHub, redisPubSub }) {
         return;
       }
 
-      if (requestUrl.pathname === SIGNAL_WS_PATH) {
-        signalServer.handleUpgrade(request, socket, head, (ws) => {
-          signalServer.emit("connection", ws, request);
-        });
-        return;
-      }
-
       socket.destroy();
     } catch {
       rejectUpgrade(socket);
@@ -230,5 +225,5 @@ export function createWebSocketServer({ httpServer, roomHub, redisPubSub }) {
 
   redisPubSub.subscribe((event) => roomHub.handleRedisEvent(event, encodeMessage));
 
-  return { collabServer, signalServer };
+  return { collabServer };
 }

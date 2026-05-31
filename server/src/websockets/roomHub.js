@@ -38,6 +38,7 @@ export function createRoomHub({ redisPubSub }) {
     const room = {
       roomId,
       workspaceId: workspace.id,
+      expiresAt: workspace.expiresAt,
       participants: new Map(),
       ydoc,
       maxParticipants: ROOM_PARTICIPANT_LIMIT,
@@ -95,6 +96,13 @@ export function createRoomHub({ redisPubSub }) {
   return {
     async joinRoom(roomId, peerId, socket, user) {
       const room = await ensureRoom(roomId, user.id);
+
+      if (room.expiresAt && new Date(room.expiresAt) < new Date()) {
+        return {
+          ok: false,
+          reason: "This workspace has expired.",
+        };
+      }
 
       if (!room.participants.has(peerId) && room.participants.size >= room.maxParticipants) {
         return {
@@ -174,8 +182,28 @@ export function createRoomHub({ redisPubSub }) {
         participant.socket.send(encodedMessage);
       }
     },
+    sendToPeer(roomId, targetPeerId, encodedMessage) {
+      const room = rooms.get(roomId);
+
+      if (!room) {
+        return;
+      }
+
+      const participant = room.participants.get(targetPeerId);
+      if (participant && participant.socket) {
+        participant.socket.send(encodedMessage);
+      }
+    },
     async handleRedisEvent(event, encodeMessage) {
       const { roomId, type, payload } = event;
+
+      if (type === "webrtc:signal") {
+        this.sendToPeer(roomId, payload.targetPeerId, encodeMessage({
+          type: "webrtc:signal",
+          payload,
+        }));
+        return;
+      }
 
       if (type === "presence:join") {
         await ensureRoom(roomId, payload.userId);
