@@ -1,6 +1,7 @@
 import { WorkspaceCanvas } from "../canvas/WorkspaceCanvas.jsx";
 import { Toolbox } from "./Toolbox.jsx";
 import { MeetingControls } from "./MeetingControls.jsx";
+import { VideoGrid } from "./VideoGrid.jsx";
 
 export function MeetingScreen({ presence }) {
   return (
@@ -8,6 +9,7 @@ export function MeetingScreen({ presence }) {
       <section className="relative h-screen w-full">
         <WorkspaceCanvas presence={presence} />
         <Toolbox />
+        <VideoGrid />
         <MeetingControls presence={presence} />
       </section>
     </main>

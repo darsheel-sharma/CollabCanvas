@@ -101,8 +101,10 @@ export const useWorkspaceStore = create((set, get) => ({
   roomError: "",
   collabStatus: "idle",
   isMuted: false,
+  isVideoEnabled: false,
   hasAudioPermission: false,
   localStream: null,
+  remoteStreams: {},
   viewportCenter: { x: 220, y: 80 },
   nodes: [],
   edges: [],
@@ -184,8 +186,10 @@ export const useWorkspaceStore = create((set, get) => ({
       nodes: [],
       edges: [],
       isMuted: false,
+      isVideoEnabled: false,
       hasAudioPermission: false,
       localStream: null,
+      remoteStreams: {},
     });
   },
   syncRoomFromRoute: (roomId, joined = false) =>
@@ -261,8 +265,10 @@ export const useWorkspaceStore = create((set, get) => ({
       edges: [],
       collabStatus: "idle",
       isMuted: false,
+      isVideoEnabled: false,
       hasAudioPermission: false,
       localStream: null,
+      remoteStreams: {},
     });
   },
   setRoomError: (roomError) => set({ roomError }),
@@ -285,6 +291,26 @@ export const useWorkspaceStore = create((set, get) => ({
         });
       }
       return { isMuted: nextMuted };
+    }),
+  toggleVideo: () =>
+    set((state) => {
+      const nextVideoEnabled = !state.isVideoEnabled;
+      if (state.localStream) {
+        state.localStream.getVideoTracks().forEach((track) => {
+          track.enabled = nextVideoEnabled;
+        });
+      }
+      return { isVideoEnabled: nextVideoEnabled };
+    }),
+  addRemoteStream: (peerId, stream) =>
+    set((state) => ({
+      remoteStreams: { ...state.remoteStreams, [peerId]: stream },
+    })),
+  removeRemoteStream: (peerId) =>
+    set((state) => {
+      const nextStreams = { ...state.remoteStreams };
+      delete nextStreams[peerId];
+      return { remoteStreams: nextStreams };
     }),
   setNodes: (nodes) =>
     set((state) => ({

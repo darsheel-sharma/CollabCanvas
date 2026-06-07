@@ -17,7 +17,6 @@ server/generated/
 server/prisma/dev.db
 server/prisma/dev.db-journal
 plan.md
-README.md
-PROJECT_DOCUMENTATION.md
+PROJECT_OVERVIEW.md
 DEPLOYMENT.md
 FEATURES.md

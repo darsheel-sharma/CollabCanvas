@@ -1,4 +1,5 @@
 import SimplePeer from "simple-peer";
+import { useWorkspaceStore } from "../store/workspaceStore.js";
 
 function getIceServers() {
   const envServers = import.meta.env.VITE_ICE_SERVERS;
@@ -94,7 +95,7 @@ export class WebRTCMeshManager {
       });
 
       peer.on("stream", (stream) => {
-        this.attachAudioElement(remotePeerId, stream);
+        useWorkspaceStore.getState().addRemoteStream(remotePeerId, stream);
       });
 
       peer.on("error", (err) => {
@@ -103,7 +104,7 @@ export class WebRTCMeshManager {
       });
 
       peer.on("close", () => {
-        this.removeAudioElement(remotePeerId);
+        useWorkspaceStore.getState().removeRemoteStream(remotePeerId);
       });
 
       this.peers.set(remotePeerId, peer);
@@ -131,28 +132,6 @@ export class WebRTCMeshManager {
     }
   }
 
-  attachAudioElement(remotePeerId, stream) {
-    this.removeAudioElement(remotePeerId);
-
-    const audio = document.createElement("audio");
-    audio.id = `remote-audio-${remotePeerId}`;
-    audio.srcObject = stream;
-    audio.autoplay = true;
-    audio.playsInline = true;
-
-    // Hide the audio element
-    audio.style.display = "none";
-    document.body.appendChild(audio);
-  }
-
-  removeAudioElement(remotePeerId) {
-    const audio = document.getElementById(`remote-audio-${remotePeerId}`);
-    if (audio) {
-      audio.srcObject = null;
-      audio.remove();
-    }
-  }
-
   destroyPeer(remotePeerId) {
     const peer = this.peers.get(remotePeerId);
     if (peer) {
@@ -163,7 +142,7 @@ export class WebRTCMeshManager {
       }
       this.peers.delete(remotePeerId);
     }
-    this.removeAudioElement(remotePeerId);
+    useWorkspaceStore.getState().removeRemoteStream(remotePeerId);
   }
 
   destroyAll() {

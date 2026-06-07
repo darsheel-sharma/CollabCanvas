@@ -17,6 +17,8 @@ export function MeetingControls({ presence }) {
   const isMuted = useWorkspaceStore((state) => state.isMuted);
   const hasAudioPermission = useWorkspaceStore((state) => state.hasAudioPermission);
   const toggleMute = useWorkspaceStore((state) => state.toggleMute);
+  const isVideoEnabled = useWorkspaceStore((state) => state.isVideoEnabled);
+  const toggleVideo = useWorkspaceStore((state) => state.toggleVideo);
   const setAudioPermission = useWorkspaceStore((state) => state.setAudioPermission);
   const setLocalStream = useWorkspaceStore((state) => state.setLocalStream);
   const leaveRoom = useWorkspaceStore((state) => state.leaveRoom);
@@ -30,11 +32,17 @@ export function MeetingControls({ presence }) {
 
   async function enableAudio() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      
+      const isVideoCurrentlyEnabled = useWorkspaceStore.getState().isVideoEnabled;
+      stream.getVideoTracks().forEach((track) => {
+        track.enabled = isVideoCurrentlyEnabled;
+      });
+      
       setLocalStream(stream);
       setAudioPermission(true);
     } catch (error) {
-      window.alert(`Audio access failed: ${error.message}`);
+      window.alert(`Media access failed: ${error.message}`);
     }
   }
 
@@ -77,7 +85,12 @@ export function MeetingControls({ presence }) {
           <div className="flex items-center gap-2 pl-2">
             {/* Audio Toggle Icon */}
             <button
-              onClick={toggleMute}
+              onClick={async () => {
+                toggleMute();
+                if (!useWorkspaceStore.getState().localStream) {
+                  await enableAudio();
+                }
+              }}
               className={`flex h-11 w-11 items-center justify-center rounded-full transition duration-150 ${
                 isMuted 
                   ? "bg-red-50 text-red-600 hover:bg-red-100" 
@@ -98,11 +111,39 @@ export function MeetingControls({ presence }) {
               )}
             </button>
 
-            {/* Audio Refresh Icon */}
+            {/* Video Toggle Icon */}
+            <button
+              onClick={async () => {
+                toggleVideo();
+                if (!useWorkspaceStore.getState().localStream) {
+                  await enableAudio();
+                }
+              }}
+              className={`flex h-11 w-11 items-center justify-center rounded-full transition duration-150 ${
+                !isVideoEnabled 
+                  ? "bg-slate-100 text-slate-500 hover:bg-slate-200" 
+                  : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+              }`}
+              title={isVideoEnabled ? "Disable Camera" : "Enable Camera"}
+              type="button"
+            >
+              {!isVideoEnabled ? (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18" />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Media Refresh Icon */}
             <button
               onClick={enableAudio}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition duration-150 hover:bg-slate-200"
-              title={hasAudioPermission ? "Refresh Audio Connection" : "Enable Audio"}
+              title={hasAudioPermission ? "Refresh Media Connection" : "Enable Audio & Video"}
               type="button"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
