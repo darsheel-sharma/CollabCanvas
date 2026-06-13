@@ -21,6 +21,11 @@ function sendError(socket, message) {
   );
 }
 
+/**
+ * Bootstraps the WebSocket server and binds it to the Express HTTP server.
+ * Handles the raw connection upgrades, message routing (CRDT, WebRTC signaling),
+ * and integrates with the Redis Pub/Sub layer for multi-instance scaling.
+ */
 export function createWebSocketServer({ httpServer, roomHub, redisPubSub }) {
   const collabServer = new WebSocketServer({ noServer: true });
 

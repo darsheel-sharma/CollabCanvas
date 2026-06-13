@@ -1,6 +1,9 @@
 import { NodeResizer } from "reactflow";
 import { useWorkspaceStore } from "../../store/workspaceStore.js";
 
+/**
+ * A custom ReactFlow node representing a simple, synchronized scratchpad/whiteboard.
+ */
 export function WhiteboardNode({ data, id, selected }) {
   const deleteNode = useWorkspaceStore((state) => state.deleteNode);
 

@@ -12,6 +12,10 @@ function buildAuthRedirectTarget(location) {
   return `/auth?next=${encodeURIComponent(`${location.pathname}${location.search}`)}`;
 }
 
+/**
+ * Route wrapper that redirects authenticated users away from auth pages (login/signup)
+ * and back to the application.
+ */
 function GuestRoute() {
   const user = useWorkspaceStore((state) => state.user);
   const [searchParams] = useSearchParams();
@@ -24,6 +28,10 @@ function GuestRoute() {
   return <AuthScreen />;
 }
 
+/**
+ * Route wrapper that ensures a user is authenticated before rendering children.
+ * Redirects to the auth screen and preserves the original requested URL.
+ */
 function ProtectedRoute({ children }) {
   const user = useWorkspaceStore((state) => state.user);
   const location = useLocation();
@@ -47,6 +55,11 @@ function MeetingPage() {
   return <DashboardScreen />;
 }
 
+/**
+ * Top-level page wrapper for a specific workspace.
+ * Responsible for verifying access to the workspace via the API, managing the
+ * initial WebSocket connection hook, and provisioning the ReactFlow provider.
+ */
 function WorkspacePage() {
   const { roomId } = useParams();
   const navigate = useNavigate();

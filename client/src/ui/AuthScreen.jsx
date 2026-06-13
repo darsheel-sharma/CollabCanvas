@@ -9,6 +9,10 @@ const primaryButtonClassName =
 const textButtonClassName =
   "mt-4 border-none bg-transparent p-0 text-sm font-medium text-blue-800 transition hover:-translate-y-0.5 hover:text-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300";
 
+/**
+ * Renders the authentication screen for login and signup.
+ * Automatically redirects users back to their originally requested URL after successful auth.
+ */
 export function AuthScreen() {
   const authMode = useWorkspaceStore((state) => state.authMode);
   const authStatus = useWorkspaceStore((state) => state.authStatus);

@@ -2,6 +2,10 @@ import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { useWorkspaceStore } from "./store/workspaceStore.js";
 
+/**
+ * Displays a full-screen loading state while checking the user's
+ * session token against the backend to determine their auth status.
+ */
 function LoadingScreen() {
   return (
     <main className="grid min-h-screen place-items-center overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(19,32,51,0.07),transparent_24%),radial-gradient(circle_at_80%_0%,rgba(214,161,76,0.22),transparent_22%),linear-gradient(180deg,rgba(255,255,255,0.75),rgba(255,255,255,0.55))] px-5 py-8 sm:px-7">
@@ -18,6 +22,10 @@ function LoadingScreen() {
   );
 }
 
+/**
+ * Root application component. Handles session hydration before
+ * rendering the router outlet.
+ */
 function App() {
   const hydrateSession = useWorkspaceStore((state) => state.hydrateSession);
   const isSessionHydrated = useWorkspaceStore((state) => state.isSessionHydrated);

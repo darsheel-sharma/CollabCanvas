@@ -7,6 +7,11 @@ function normalizeWsUrl(baseUrl, path) {
   return url.toString();
 }
 
+/**
+ * Client-side manager for the WebSocket collaboration connection.
+ * Handles connecting, parsing binary/JSON messages, tracking connection status,
+ * and routing incoming events (Yjs syncs, WebRTC signals, presence updates).
+ */
 export class WebSocketCollabClient {
   constructor({
     roomId,
@@ -30,6 +35,10 @@ export class WebSocketCollabClient {
     this.clientId = globalThis.crypto?.randomUUID?.() ?? `client-${Date.now()}`;
   }
 
+  /**
+   * Initiates the WebSocket connection to the server, appending the JWT token
+   * if the user is authenticated.
+   */
   connect() {
     this.onStatusChange?.(PRESENCE_STATUS.CONNECTING);
     
@@ -79,7 +88,15 @@ export class WebSocketCollabClient {
       }
 
       if (message.type === WS_MESSAGE_TYPES.WEBRTC_SIGNAL) {
-        this.onWebRTCSignal?.(message.payload);
+        let payload = message.payload;
+        if (typeof payload.signal === "string") {
+          try {
+            payload.signal = JSON.parse(payload.signal);
+          } catch (e) {
+            console.error("Failed to parse WebRTC signal", e);
+          }
+        }
+        this.onWebRTCSignal?.(payload);
         return;
       }
 
@@ -89,6 +106,9 @@ export class WebSocketCollabClient {
     });
   }
 
+  /**
+   * Internal helper to encode and dispatch messages over the active socket.
+   */
   send(type, payload) {
     if (this.socket?.readyState !== WebSocket.OPEN) {
       return;
@@ -97,6 +117,9 @@ export class WebSocketCollabClient {
     this.socket.send(encodeMessage({ type, payload }));
   }
 
+  /**
+   * Gracefully terminates the connection and informs the server.
+   */
   disconnect() {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.send(WS_MESSAGE_TYPES.ROOM_LEAVE, {
@@ -108,6 +131,9 @@ export class WebSocketCollabClient {
     this.socket?.close();
   }
 
+  /**
+   * Dispatches a binary Yjs CRDT update payload.
+   */
   sendYDocUpdate(update) {
     this.send(WS_MESSAGE_TYPES.YDOC_UPDATE, { update });
   }
@@ -115,7 +141,7 @@ export class WebSocketCollabClient {
   sendWebRTCSignal(targetPeerId, signal) {
     this.send(WS_MESSAGE_TYPES.WEBRTC_SIGNAL, {
       targetPeerId,
-      signal,
+      signal: JSON.stringify(signal),
     });
   }
 }

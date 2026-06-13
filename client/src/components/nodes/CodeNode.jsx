@@ -1,14 +1,19 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import { MonacoBinding } from "y-monaco";
 import { NodeResizer } from "reactflow";
 import { useWorkspaceStore } from "../../store/workspaceStore.js";
 
+/**
+ * A custom ReactFlow node that embeds a Monaco code editor.
+ * Uses `y-monaco` to provide real-time collaborative text editing with presence awareness.
+ */
 export function CodeNode({ data, id, selected }) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
   const bindingRef = useRef(null);
   const deleteNode = useWorkspaceStore((state) => state.deleteNode);
+  const [isEditorReady, setIsEditorReady] = useState(false);
 
   const handleDelete = (e) => {
     e.stopPropagation();
@@ -19,6 +24,7 @@ export function CodeNode({ data, id, selected }) {
 
   useEffect(() => {
     if (
+      !isEditorReady ||
       !editorRef.current ||
       !monacoRef.current ||
       !data.yDoc ||
@@ -45,7 +51,7 @@ export function CodeNode({ data, id, selected }) {
       bindingRef.current?.destroy();
       bindingRef.current = null;
     };
-  }, [data.awareness, data.docKey, data.yDoc]);
+  }, [data.awareness, data.docKey, data.yDoc, isEditorReady]);
 
   return (
     <>
@@ -85,6 +91,7 @@ export function CodeNode({ data, id, selected }) {
               onMount={(editor, monaco) => {
                 editorRef.current = editor;
                 monacoRef.current = monaco;
+                setIsEditorReady(true);
               }}
               options={{
                 minimap: { enabled: false },

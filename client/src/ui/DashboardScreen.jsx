@@ -3,13 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useWorkspaceStore } from "../store/workspaceStore.js";
 
 const primaryButtonClassName =
-  "w-full rounded-2xl bg-gradient-to-r from-slate-900 via-slate-950 to-blue-950 px-6 py-4 font-semibold text-white shadow-[0_12px_30px_rgba(19,32,51,0.2)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(19,32,51,0.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:opacity-50 disabled:cursor-not-allowed";
+  "w-full rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 px-6 py-4 font-bold text-white shadow-[0_12px_30px_rgba(79,70,229,0.3)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(79,70,229,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed";
 const secondaryButtonClassName =
-  "rounded-2xl border border-slate-950/10 bg-white/70 px-4 py-3 font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300";
+  "rounded-2xl border border-slate-200 glass px-5 py-3 font-semibold text-slate-800 transition duration-300 hover:-translate-y-1 hover:bg-white/90 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 dark:text-slate-200 dark:border-slate-700 dark:hover:bg-slate-800/90";
 const inputClassName =
-  "w-full rounded-2xl border border-slate-950/10 bg-white/94 px-4 py-3 text-slate-800 shadow-sm outline-none transition focus-visible:border-slate-700 focus-visible:ring-2 focus-visible:ring-slate-300";
+  "w-full rounded-2xl border border-slate-200 bg-white/60 backdrop-blur-md px-5 py-3.5 text-slate-800 shadow-sm outline-none transition duration-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:bg-slate-900/60 dark:border-slate-700 dark:text-slate-100 dark:focus:ring-indigo-900";
 const textButtonClassName =
-  "border-none bg-transparent p-0 text-sm font-semibold text-amber-700 transition hover:text-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300";
+  "border-none bg-transparent p-0 text-sm font-semibold text-indigo-600 transition hover:text-indigo-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 dark:text-indigo-400 dark:hover:text-indigo-300";
 
 // Live Countdown Timer for Workspace Card
 function WorkspaceCard({ workspace, onEnter, onDelete }) {
@@ -67,17 +67,17 @@ function WorkspaceCard({ workspace, onEnter, onDelete }) {
   return (
     <article 
       onClick={() => onEnter(workspace.slug)}
-      className="group relative flex flex-col justify-between rounded-[24px] border border-slate-950/10 bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.03)] backdrop-blur-sm transition duration-300 hover:-translate-y-1 hover:border-slate-950/20 hover:bg-white hover:shadow-[0_20px_50px_rgba(19,32,51,0.08)] cursor-pointer"
+      className="group relative flex flex-col justify-between rounded-[28px] p-7 glass-card cursor-pointer animate-slideUp"
     >
       <div>
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-xl font-bold text-slate-950 group-hover:text-amber-700 transition duration-200 truncate pr-4">
+          <h3 className="text-xl font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition duration-200 truncate pr-4">
             {workspace.name}
           </h3>
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-            expiresAt ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold shadow-sm ${
+            expiresAt ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200"
           }`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${expiresAt ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${expiresAt ? "bg-indigo-500 animate-pulse" : "bg-emerald-500"}`} />
             {timeLeft}
           </span>
         </div>
@@ -127,7 +127,7 @@ function WorkspaceCard({ workspace, onEnter, onDelete }) {
           
           <button
             onClick={() => onEnter(workspace.slug)}
-            className="h-11 rounded-xl bg-slate-950 px-4 text-sm font-bold text-white transition duration-200 hover:bg-amber-700"
+            className="h-11 rounded-xl bg-slate-900 dark:bg-slate-100 px-5 text-sm font-bold text-white dark:text-slate-900 transition duration-200 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white"
             type="button"
           >
             Enter
@@ -138,6 +138,10 @@ function WorkspaceCard({ workspace, onEnter, onDelete }) {
   );
 }
 
+/**
+ * The main dashboard where authenticated users can view, create, or join workspaces.
+ * Lists active workspaces along with their lifetime/expiration timers.
+ */
 export function DashboardScreen() {
   const user = useWorkspaceStore((state) => state.user);
   const workspaces = useWorkspaceStore((state) => state.workspaces);
@@ -227,17 +231,21 @@ export function DashboardScreen() {
   };
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(135deg,rgba(255,255,255,0.18),rgba(255,255,255,0.04)),radial-gradient(circle_at_top,rgba(214,161,76,0.14),transparent_32%),linear-gradient(180deg,#fcfaf5_0%,#f0f4f8_100%)] px-4 py-8 sm:px-6 md:py-12">
-      <div className="mx-auto max-w-7xl">
+    <main className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-50 via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-950 dark:to-black px-4 py-8 sm:px-6 md:py-12 animate-fadeIn relative overflow-hidden">
+      {/* Abstract Orbs for depth */}
+      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-400/10 dark:bg-indigo-500/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-violet-400/10 dark:bg-violet-500/10 blur-[120px] pointer-events-none" />
+      
+      <div className="mx-auto max-w-7xl relative z-10">
         
         {/* Upper Header Row */}
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-950/5 pb-6 mb-8">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 dark:border-slate-800 pb-6 mb-8">
           <div>
-            <span className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">Workspace Hub</span>
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl mt-1">
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-600 dark:text-indigo-400">Workspace Hub</span>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl mt-1">
               Welcome back, {user?.name}!
             </h1>
-            <p className="text-slate-500 mt-1 text-[15px]">
+            <p className="text-slate-500 dark:text-slate-400 mt-2 text-[15px] font-medium">
               Create naming workspaces with customizable lifetimes or enter active ones to collaborate in real-time.
             </p>
           </div>
@@ -260,8 +268,8 @@ export function DashboardScreen() {
           <section className="lg:col-span-5 grid gap-8">
             
             {/* Create Workspace Panel */}
-            <div className="rounded-[28px] border-2 border-slate-950/15 bg-white/70 p-6 sm:p-8 shadow-[0_20px_50px_rgba(19,32,51,0.06)] backdrop-blur-md">
-              <h2 className="text-2xl font-bold text-slate-950 mb-6">Create Workspace</h2>
+            <div className="rounded-[32px] p-6 sm:p-8 glass animate-slideUp" style={{ animationDelay: '0.1s' }}>
+              <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Create Workspace</h2>
               
               <form onSubmit={handleCreate} className="grid gap-6">
                 <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -374,9 +382,9 @@ export function DashboardScreen() {
             </div>
 
             {/* Join Workspace Panel */}
-            <div className="rounded-[28px] border-2 border-slate-950/15 bg-white/70 p-6 sm:p-8 shadow-[0_20px_50px_rgba(19,32,51,0.06)] backdrop-blur-md">
-              <h2 className="text-xl font-bold text-slate-950 mb-3">Join a Workspace</h2>
-              <p className="text-xs text-slate-500 mb-4">
+            <div className="rounded-[32px] p-6 sm:p-8 glass animate-slideUp" style={{ animationDelay: '0.2s' }}>
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-3">Join a Workspace</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 font-medium">
                 Access a colleague's workspace by entering its code or direct sharing link below.
               </p>
 
@@ -403,24 +411,24 @@ export function DashboardScreen() {
 
           {/* Right Column: Workspaces List (7 cols) */}
           <section className="lg:col-span-7">
-            <h2 className="text-2xl font-extrabold text-slate-950 mb-6 flex items-center justify-between">
+            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-6 flex items-center justify-between">
               <span>Your Active Workspaces</span>
-              <span className="text-xs font-bold bg-amber-100 text-amber-800 rounded-full px-3 py-1">
+              <span className="text-xs font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200 rounded-full px-3 py-1">
                 {workspaces.length} Total
               </span>
             </h2>
 
             {isLoading ? (
-              <div className="grid h-48 place-items-center rounded-[28px] border-2 border-dashed border-slate-950/10 bg-white/40">
+              <div className="grid h-48 place-items-center rounded-[32px] border-2 border-dashed border-slate-200 dark:border-slate-800 glass">
                 <div className="flex flex-col items-center gap-2">
-                  <span className="h-6 w-6 animate-spin rounded-full border-2 border-amber-700 border-t-transparent" />
-                  <span className="text-sm font-semibold text-slate-500">Loading workspaces...</span>
+                  <span className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+                  <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">Loading workspaces...</span>
                 </div>
               </div>
             ) : workspaces.length === 0 ? (
               // Empty State Illustration Card
-              <div className="flex flex-col items-center justify-center p-12 text-center rounded-[28px] border-2 border-dashed border-slate-950/12 bg-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.01)]">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 text-amber-700 mb-4">
+              <div className="flex flex-col items-center justify-center p-12 text-center rounded-[32px] border-2 border-dashed border-slate-200 dark:border-slate-800 glass animate-slideUp" style={{ animationDelay: '0.3s' }}>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400 mb-4">
                   <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>

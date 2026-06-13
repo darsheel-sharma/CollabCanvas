@@ -5,6 +5,10 @@ function createSlug() {
   return `ws-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Registers REST API endpoints for managing the lifecycle of collaborative workspaces.
+ * Includes creating, retrieving, deleting, and listing workspaces with optional time limits.
+ */
 export function registerWorkspaceRoutes(app) {
   // Get all active workspaces for the current user
   app.get("/api/workspaces", requireAuth, async (request, response) => {

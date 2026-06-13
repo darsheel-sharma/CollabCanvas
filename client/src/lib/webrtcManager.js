@@ -1,6 +1,11 @@
 import SimplePeer from "simple-peer";
 import { useWorkspaceStore } from "../store/workspaceStore.js";
 
+/**
+ * Resolves the active ICE (STUN/TURN) servers for WebRTC negotiation.
+ * Checks for a `VITE_ICE_SERVERS` environment variable override first,
+ * falling back to a robust default list of public STUN/TURN servers.
+ */
 function getIceServers() {
   const envServers = import.meta.env.VITE_ICE_SERVERS;
   if (envServers) {
@@ -18,12 +23,29 @@ function getIceServers() {
   return [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
+    {
+      urls: "turn:openrelay.metered.ca:80",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
+    {
+      urls: "turn:openrelay.metered.ca:443?transport=tcp",
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    }
   ];
 }
 
+/**
+ * Manages a decentralized P2P WebRTC mesh network for the workspace.
+ * Responsible for establishing `simple-peer` connections with every other
+ * participant in the room to broadcast local media streams.
+ */
 export class WebRTCMeshManager {
   constructor({ localPeerId, sendSignal }) {
     this.localPeerId = localPeerId;
@@ -33,29 +55,39 @@ export class WebRTCMeshManager {
     this.participants = [];
   }
 
+  /**
+   * Sets the local audio/video media stream and automatically propagates
+   * it to all active peer connections.
+   */
   setStream(stream) {
     if (this.localStream === stream) {
       return;
     }
 
+    const oldStream = this.localStream;
     this.localStream = stream;
 
-    // Re-negotiate all active peers with the new stream
-    this.rebuildPeers();
+    // Dynamically update existing peer connections without destroying them
+    for (const peer of this.peers.values()) {
+      if (oldStream) {
+        try { peer.removeStream(oldStream); } catch (e) { /* Safe discard */ }
+      }
+      if (stream) {
+        try { peer.addStream(stream); } catch (e) { /* Safe discard */ }
+      }
+    }
   }
 
+  /**
+   * Called when the active participant list changes. It rebuilds the peer
+   * connections (adds new peers, drops disconnected ones).
+   */
   updateParticipants(participants) {
     this.participants = participants;
     this.rebuildPeers();
   }
 
   rebuildPeers() {
-    if (!this.localStream) {
-      // If we don't have mic stream, close all peer connections
-      this.destroyAll();
-      return;
-    }
-
     const currentPeerIds = new Set(
       this.participants
         .map((p) => p.peerId)
@@ -77,6 +109,11 @@ export class WebRTCMeshManager {
     }
   }
 
+  /**
+   * Initiates a new P2P connection with a remote peer.
+   * Resolves connection glare by making the peer with the lexicographically
+   * smaller ID act as the connection initiator.
+   */
   initiatePeer(remotePeerId) {
     const isInitiator = this.localPeerId < remotePeerId;
 
@@ -84,7 +121,15 @@ export class WebRTCMeshManager {
       const peer = new SimplePeer({
         initiator: isInitiator,
         stream: this.localStream || undefined,
-        trickle: false, // Set to false for simpler one-shot SDP signaling
+        trickle: true, // Enable trickle ICE for fast, continuous connection negotiation
+        offerOptions: {
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+        },
+        answerOptions: {
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+        },
         config: {
           iceServers: getIceServers(),
         },
@@ -95,7 +140,13 @@ export class WebRTCMeshManager {
       });
 
       peer.on("stream", (stream) => {
-        useWorkspaceStore.getState().addRemoteStream(remotePeerId, stream);
+        const clonedStream = new MediaStream(stream.getTracks());
+        useWorkspaceStore.getState().addRemoteStream(remotePeerId, clonedStream);
+      });
+
+      peer.on("track", (track, stream) => {
+        const clonedStream = new MediaStream(stream.getTracks());
+        useWorkspaceStore.getState().addRemoteStream(remotePeerId, clonedStream);
       });
 
       peer.on("error", (err) => {
@@ -113,6 +164,10 @@ export class WebRTCMeshManager {
     }
   }
 
+  /**
+   * Processes an incoming SDP offer/answer or ICE candidate from the signaling server
+   * and routes it to the corresponding peer connection.
+   */
   handleSignal(remotePeerId, signal) {
     const peer = this.peers.get(remotePeerId);
     if (peer) {
@@ -124,11 +179,9 @@ export class WebRTCMeshManager {
     } else {
       // If we got a signal from someone we haven't created a peer connection for yet
       // (usually because of message arriving before presence update)
-      if (this.localStream) {
-        this.initiatePeer(remotePeerId);
-        const newPeer = this.peers.get(remotePeerId);
-        newPeer?.signal(signal);
-      }
+      this.initiatePeer(remotePeerId);
+      const newPeer = this.peers.get(remotePeerId);
+      newPeer?.signal(signal);
     }
   }
 

@@ -5,6 +5,13 @@ import {
   signupUser,
 } from "../lib/auth.js";
 
+/**
+ * Registers authentication-related endpoints:
+ * - POST /api/auth/signup: Create a new account
+ * - POST /api/auth/login: Authenticate and get a cookie
+ * - GET /api/auth/me: Retrieve current session profile
+ * - POST /api/auth/logout: Clear session
+ */
 export function registerAuthRoutes(app) {
   app.post("/api/auth/signup", async (request, response) => {
     try {

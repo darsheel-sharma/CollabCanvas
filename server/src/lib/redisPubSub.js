@@ -3,6 +3,11 @@ import { createClient } from "redis";
 
 const REDIS_CHANNEL = "live-collab:rooms";
 
+/**
+ * Initializes a Redis Pub/Sub adapter to allow horizontal scaling of WebSocket servers.
+ * If Redis is unavailable or fails to connect, it gracefully returns a "dummy" adapter,
+ * falling back to single-instance memory orchestration.
+ */
 export async function createRedisPubSub() {
   const redisUrl = process.env.REDIS_URL;
 

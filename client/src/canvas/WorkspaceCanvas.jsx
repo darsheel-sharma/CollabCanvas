@@ -22,6 +22,12 @@ const nodeTypes = {
   imageNode: ImageNode,
 };
 
+/**
+ * The main interactive canvas component built on top of ReactFlow.
+ * It manages the rendering of custom nodes, handles viewport synchronization
+ * for newly added nodes, handles drag-and-drop creation, and binds
+ * the Zustand canvas state to the visual ReactFlow representation.
+ */
 export function WorkspaceCanvas({ presence }) {
   const { screenToFlowPosition } = useReactFlow();
   const navigate = useNavigate();

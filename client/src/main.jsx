@@ -5,6 +5,9 @@ import "reactflow/dist/style.css";
 import { router } from "./router.jsx";
 import "./styles.css";
 
+/**
+ * Main application entry point. Mounts the React Router.
+ */
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <RouterProvider router={router} />

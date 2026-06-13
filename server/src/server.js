@@ -9,8 +9,11 @@ import { createRedisPubSub } from "./lib/redisPubSub.js";
 import { createRoomHub } from "./websockets/roomHub.js";
 import { createWebSocketServer } from "./websockets/socketServer.js";
 
+// Configuration from environment variables
 const port = Number(process.env.PORT ?? 4000);
 const clientOrigin = process.env.CLIENT_ORIGIN ?? "http://localhost:5173";
+
+// Initialize the Express application
 const app = express();
 
 app.use((request, response, next) => {

@@ -4,6 +4,9 @@ function createRoomId() {
   return `meet-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * Registers routes for ad-hoc room creation (often used as a fallback if not using full workspaces).
+ */
 export function registerRoomRoutes(app) {
   app.post("/api/rooms", (_request, response) => {
     const roomId = createRoomId();

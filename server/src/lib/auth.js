@@ -7,11 +7,19 @@ import { prisma } from "./prisma.js";
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-only-change-me";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
+/**
+ * Hashes a plaintext password using scrypt with a random salt.
+ * Formats the output as `salt:hash`.
+ */
 function hashPassword(password, salt = crypto.randomBytes(16).toString("hex")) {
   const derivedKey = crypto.scryptSync(password, salt, 64).toString("hex");
   return `${salt}:${derivedKey}`;
 }
 
+/**
+ * Verifies a plaintext password against a stored `salt:hash` string
+ * using a constant-time comparison to prevent timing attacks.
+ */
 function verifyPassword(password, storedHash) {
   const [salt, derivedKey] = storedHash.split(":");
   const candidateHash = crypto.scryptSync(password, salt, 64).toString("hex");
@@ -30,6 +38,9 @@ function toClientUser(user) {
   };
 }
 
+/**
+ * Generates a signed JWT session token for the authenticated user.
+ */
 function signSessionToken(user) {
   return jwt.sign(
     {
@@ -62,11 +73,17 @@ export function clearSessionCookie() {
   });
 }
 
+/**
+ * Parses the raw cookie header to extract the JWT token.
+ */
 export function getTokenFromCookies(cookieHeader = "") {
   const cookies = parseCookie(cookieHeader || "");
   return cookies[AUTH_COOKIE_NAME] ?? null;
 }
 
+/**
+ * Validates a JWT token and retrieves the corresponding database user record.
+ */
 export async function getUserFromToken(token) {
   if (!token) {
     return null;
@@ -88,6 +105,10 @@ export async function getUserFromToken(token) {
   }
 }
 
+/**
+ * Helper to extract and validate the user from an incoming Express/HTTP request.
+ * Checks both cookies and the Authorization header.
+ */
 export async function getUserFromRequest(request) {
   let token = getTokenFromCookies(request.headers.cookie ?? "");
   if (!token && request.headers.authorization?.startsWith("Bearer ")) {
@@ -96,6 +117,9 @@ export async function getUserFromRequest(request) {
   return getUserFromToken(token);
 }
 
+/**
+ * Handles user registration.
+ */
 export async function signupUser({ displayName, email, password }) {
   const normalizedEmail = email.trim().toLowerCase();
   const existingUser = await prisma.user.findUnique({
@@ -120,6 +144,9 @@ export async function signupUser({ displayName, email, password }) {
   };
 }
 
+/**
+ * Handles user login and password verification.
+ */
 export async function loginUser({ email, password }) {
   const normalizedEmail = email.trim().toLowerCase();
   const user = await prisma.user.findUnique({

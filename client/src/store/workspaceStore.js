@@ -90,6 +90,14 @@ function parseRoomId(draft) {
   return draft;
 }
 
+/**
+ * The global Zustand state store for the frontend application.
+ * Manages:
+ * - Authentication status & current user profile
+ * - Active workspace details (room code, participants, connections)
+ * - Canvas state (nodes, edges, node interactions)
+ * - WebRTC P2P media streams (local and remote)
+ */
 export const useWorkspaceStore = create((set, get) => ({
   user: null,
   isSessionHydrated: false,

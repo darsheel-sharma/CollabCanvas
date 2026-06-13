@@ -20,6 +20,11 @@ async function ensureWorkspaceRecord(roomId, ownerUserId) {
   });
 }
 
+/**
+ * Creates the core room manager that holds active Yjs documents in memory.
+ * Manages participant connections, handles CRDT convergence, and persists
+ * document states to the database periodically.
+ */
 export function createRoomHub({ redisPubSub }) {
   const rooms = new Map();
 
@@ -49,6 +54,10 @@ export function createRoomHub({ redisPubSub }) {
     return room;
   }
 
+  /**
+   * Debounces database writes for a specific room to prevent database
+   * exhaustion during high-frequency collaborative typing/drawing.
+   */
   function schedulePersist(room) {
     clearTimeout(room.saveTimer);
     room.saveTimer = setTimeout(async () => {
@@ -80,6 +89,10 @@ export function createRoomHub({ redisPubSub }) {
       .sort((left, right) => left.joinedAt.localeCompare(right.joinedAt));
   }
 
+  /**
+   * Checks if a room has 0 participants. If so, it removes the room
+   * from memory to free up resources.
+   */
   function cleanupRoomIfEmpty(roomId) {
     const room = rooms.get(roomId);
 
@@ -154,6 +167,10 @@ export function createRoomHub({ redisPubSub }) {
       const room = rooms.get(roomId);
       return room ? serializeParticipants(room) : [];
     },
+    /**
+     * Applies an incoming binary CRDT delta to the server's in-memory Yjs doc
+     * and triggers a scheduled DB write.
+     */
     applyYjsUpdate(roomId, update) {
       const room = rooms.get(roomId);
       if (!room) {
@@ -167,6 +184,10 @@ export function createRoomHub({ redisPubSub }) {
       const room = rooms.get(roomId);
       return room ? Y.encodeStateAsUpdate(room.ydoc) : new Uint8Array();
     },
+    /**
+     * Relays a message to all participants in a room except the specified peer.
+     * Useful for broadcasting updates (e.g., someone moved their cursor).
+     */
     broadcast(roomId, encodedMessage, excludePeerId) {
       const room = rooms.get(roomId);
 

@@ -7,6 +7,10 @@ const tools = [
   { type: "whiteboardNode", label: "Whiteboard", hint: "Sketches" },
 ];
 
+/**
+ * A floating menu that allows users to drag-and-drop or click to spawn
+ * new node types onto the WorkspaceCanvas.
+ */
 export function Toolbox() {
   const addNode = useWorkspaceStore((state) => state.addNode);
   const [isOpen, setIsOpen] = useState(false);

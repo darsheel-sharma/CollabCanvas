@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
 @layer base {
+  :root {
+    color-scheme: light dark;
+    --font-primary: "Outfit", system-ui, -apple-system, sans-serif;
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(19, 32, 51, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(19, 32, 51, 0.05);
+  }
+
+  .dark {
+    --glass-bg: rgba(19, 32, 51, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  }
+
   * {
     box-sizing: border-box;
   }
 
-  :root {
-    color-scheme: light;
-    font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-  }
-
   body {
-    @apply m-0 min-h-screen text-slate-950 antialiased;
+    font-family: var(--font-primary);
+    @apply m-0 min-h-screen text-slate-900 bg-slate-50 antialiased dark:text-slate-100 dark:bg-slate-950;
   }
 
   button,
   input,
-  textarea {
+  textarea,
+  select {
     font: inherit;
   }
 
   #root {
     @apply min-h-screen;
   }
+}
+
+@layer utilities {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+
+  .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+  }
+
+  .glass-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px 0 rgba(19, 32, 51, 0.12);
+    border-color: rgba(19, 32, 51, 0.2);
+  }
+
+  .dark .glass-card:hover {
+    box-shadow: 0 16px 48px 0 rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.4s ease-out forwards;
+  }
+  
+  .animate-slideUp {
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }

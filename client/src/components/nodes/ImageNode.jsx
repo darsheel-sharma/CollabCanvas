@@ -3,6 +3,10 @@ import { NodeResizer } from "reactflow";
 import { useWorkspaceStore } from "../../store/workspaceStore.js";
 import { ImageUploadModal } from "../ImageUploadModal.jsx";
 
+/**
+ * A custom ReactFlow node that displays an image.
+ * Supports dropping in a new image and dynamically resizing based on the image's aspect ratio.
+ */
 export function ImageNode({ data, id, selected }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const deleteNode = useWorkspaceStore((state) => state.deleteNode);

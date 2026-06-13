@@ -11,6 +11,10 @@ const secondaryButtonClassName =
 const dangerButtonClassName =
   "rounded-2xl bg-red-700 px-4 py-3 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-red-800 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300";
 
+/**
+ * Floating UI component for meeting controls.
+ * Handles toggling audio/video, copying the room link, and exiting the workspace.
+ */
 export function MeetingControls({ presence }) {
   const activeRoom = useWorkspaceStore((state) => state.activeRoom);
   const user = useWorkspaceStore((state) => state.user);
@@ -32,7 +36,20 @@ export function MeetingControls({ presence }) {
 
   async function enableAudio() {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      let stream;
+      try {
+        // First try to get both audio and video
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      } catch (videoError) {
+        console.warn("Could not get video source, falling back to audio only:", videoError);
+        // If getting video fails (e.g. no webcam, or webcam in use by another app), fallback to audio-only
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        
+        // Ensure the store reflects that video is off
+        if (useWorkspaceStore.getState().isVideoEnabled) {
+          toggleVideo();
+        }
+      }
       
       const isVideoCurrentlyEnabled = useWorkspaceStore.getState().isVideoEnabled;
       stream.getVideoTracks().forEach((track) => {

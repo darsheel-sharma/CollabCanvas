@@ -3,11 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Live Collab Workspace</title>
+    <meta name="description" content="CollabCanvas: An enterprise-ready, high-performance real-time collaborative workspace." />
+    
+    <!-- Node polyfills for simple-peer in Vite -->
+    <script>
+      window.global = window;
+      window.process = {
+        env: { DEBUG: undefined },
+        version: '',
+        nextTick: function(cb) { setTimeout(cb, 0); }
+      };
+    </script>
+    
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <title>CollabCanvas | Real-time Collaborative Workspace</title>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
-  </html>
+</html>
 

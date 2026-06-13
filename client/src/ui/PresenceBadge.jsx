@@ -1,3 +1,6 @@
+/**
+ * Displays a small colored indicator representing the current WebSocket connection status.
+ */
 export function PresenceBadge({ status, label }) {
   const statusClassName =
     status === "connected"

@@ -34,6 +34,15 @@ function readCollection(yMap) {
   });
 }
 
+/**
+ * Core React Hook that orchestrates the real-time collaborative session.
+ * 
+ * Responsibilities:
+ * 1. Connects to the WebSocket server using `WebSocketCollabClient`.
+ * 2. Initializes and maintains the local `Y.Doc` CRDT.
+ * 3. Binds ReactFlow canvas state (nodes/edges) bidirectionally to the Yjs Maps.
+ * 4. Bootstraps the `WebRTCMeshManager` for peer-to-peer voice/video.
+ */
 export function useCollabSession({ enabled, workspaceId = DEFAULT_WORKSPACE_ID, user }) {
   const setCollabStatus = useWorkspaceStore((state) => state.setCollabStatus);
   const failRoomJoin = useWorkspaceStore((state) => state.failRoomJoin);
@@ -113,9 +122,10 @@ export function useCollabSession({ enabled, workspaceId = DEFAULT_WORKSPACE_ID, 
     });
 
     webrtcManager.localPeerId = client.clientId;
-    // Set initial stream if already granted
+    // Set initial stream if the user already granted mic/camera access
     webrtcManager.setStream(useWorkspaceStore.getState().localStream);
 
+    // Broadcast local Yjs changes to the network
     const handleDocUpdate = (update, origin) => {
       if (origin === "remote") {
         syncCanvasFromDoc();
@@ -155,6 +165,8 @@ export function useCollabSession({ enabled, workspaceId = DEFAULT_WORKSPACE_ID, 
     const unsubscribe = useWorkspaceStore.subscribe((state) => {
       webrtcManager.setStream(state.localStream);
 
+      // Prevent echo loops: don't push state back to Yjs if we are currently
+      // applying a remote Yjs update to the Zustand store.
       if (state.isApplyingRemoteState || state.canvasVersion === lastCanvasVersionRef.current) {
         return;
       }
